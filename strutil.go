@@ -4,10 +4,8 @@
 
 // blame: jnml, labs.nic.cz
 
-
 // Package strutil collects utils supplemental to the standard strings package.
 package strutil
-
 
 import (
 	"bytes"
@@ -18,7 +16,6 @@ import (
 	"os"
 	"sync"
 )
-
 
 // Base32ExtDecode decodes base32 extended (RFC 4648) text to binary data.
 func Base32ExtDecode(text []byte) (data []byte, err os.Error) {
@@ -31,7 +28,6 @@ func Base32ExtDecode(text []byte) (data []byte, err os.Error) {
 	data = data[:n]
 	return
 }
-
 
 // Base32ExtEncode encodes binary data to base32 extended (RFC 4648) encoded text.
 func Base32ExtEncode(data []byte) (text []byte) {
@@ -46,7 +42,6 @@ func Base32ExtEncode(data []byte) (text []byte) {
 	return buf.Bytes()
 }
 
-
 // Base64Decode decodes base64 text to binary data.
 func Base64Decode(text []byte) (data []byte, err os.Error) {
 	n := base64.StdEncoding.DecodedLen(len(text))
@@ -58,7 +53,6 @@ func Base64Decode(text []byte) (data []byte, err os.Error) {
 	data = data[:n]
 	return
 }
-
 
 // Base64Encode encodes binary data to base64 encoded text.
 func Base64Encode(data []byte) (text []byte) {
@@ -73,13 +67,11 @@ func Base64Encode(data []byte) (text []byte) {
 	return buf.Bytes()
 }
 
-
 // Formatter is an io.Writer extended by a fmt.Printf like function Format
 type Formatter interface {
 	io.Writer
 	Format(format string, args ...interface{}) (n int, errno os.Error)
 }
-
 
 type indentFormatter struct {
 	io.Writer
@@ -88,14 +80,12 @@ type indentFormatter struct {
 	state       int
 }
 
-
 const (
 	st0 = iota
 	stBOL
 	stPERC
 	stBOL_PERC
 )
-
 
 // IndentFormatter returns a new Formatter which interprets %i and %u in the
 // Format() format string as indent and undent commands. The commands can
@@ -120,7 +110,6 @@ const (
 func IndentFormatter(w io.Writer, indent string) Formatter {
 	return &indentFormatter{w, []byte(indent), 0, stBOL}
 }
-
 
 func (f *indentFormatter) format(flat bool, format string, args ...interface{}) (n int, errno os.Error) {
 	buf := []byte{}
@@ -200,14 +189,11 @@ func (f *indentFormatter) format(flat bool, format string, args ...interface{}) 
 	return f.Write([]byte(fmt.Sprintf(string(buf), args...)))
 }
 
-
 func (f *indentFormatter) Format(format string, args ...interface{}) (n int, errno os.Error) {
 	return f.format(false, format, args...)
 }
 
-
 type flatFormatter indentFormatter
-
 
 // FlatFormatter returns a newly created Formatter with the same functionality as the one returned
 // by IndentFormatter except it allows a newline in the 'format' string argument of Format
@@ -225,11 +211,9 @@ func FlatFormatter(w io.Writer) Formatter {
 	return (*flatFormatter)(IndentFormatter(w, "").(*indentFormatter))
 }
 
-
 func (f *flatFormatter) Format(format string, args ...interface{}) (n int, errno os.Error) {
 	return (*indentFormatter)(f).format(true, format, args...)
 }
-
 
 // Pool handles aligning of strings having equal values to the same string instance.
 // Intended use is to conserve some memory e.g. where a large number of identically valued strings
@@ -240,12 +224,10 @@ type Pool struct {
 	pool map[string]string
 }
 
-
 // NewPool returns a newly created Pool.
 func NewPool() *Pool {
 	return &Pool{map[string]string{}}
 }
-
 
 // Align returns a string with the same value as its argument. It guarantees that
 // all aligned strings share a single instance in memory.
@@ -259,12 +241,10 @@ func (p *Pool) Align(s string) string {
 	return s
 }
 
-
 // Count returns the number of items in the pool.
 func (p *Pool) Count() int {
 	return len(p.pool)
 }
-
 
 // GoPool is a concurrent access safe version of Pool.
 type GoPool struct {
@@ -272,12 +252,10 @@ type GoPool struct {
 	rwm  *sync.RWMutex
 }
 
-
 // NewGoPool returns a newly created GoPool.
 func NewGoPool() (p *GoPool) {
 	return &GoPool{map[string]string{}, &sync.RWMutex{}}
 }
-
 
 // Align returns a string with the same value as its argument. It guarantees that
 // all aligned strings share a single instance in memory.
@@ -306,12 +284,10 @@ func (p *GoPool) Align(s string) (y string) {
 	return
 }
 
-
 // Count returns the number of items in the pool.
 func (p *GoPool) Count() int {
 	return len(p.pool)
 }
-
 
 // Dict is a string <-> id bijection. Dict is *not* concurrent access safe for assigning new ids
 // to strings not yet contained in the bijection.
@@ -322,7 +298,6 @@ type Dict struct {
 	is []string
 }
 
-
 // NewDict returns a newly created Dict.
 func NewDict() (d *Dict) {
 	d = &Dict{map[string]int{}, []string{}}
@@ -330,12 +305,10 @@ func NewDict() (d *Dict) {
 	return
 }
 
-
 // Count returns the number of items in the dict.
 func (d *Dict) Count() int {
 	return len(d.is)
 }
-
 
 // Id maps string s to it's numeric identificator.
 func (d *Dict) Id(s string) (y int) {
@@ -350,13 +323,11 @@ func (d *Dict) Id(s string) (y int) {
 	return
 }
 
-
 // S maps an id to it's string value. Id values not contained in the bijection panics on boundary checks,
 // just like e.g. conatiner.Vector.At()
 func (d *Dict) S(id int) string {
 	return d.is[id]
 }
-
 
 // GoDict is a concurrent access safe version of Dict.
 type GoDict struct {
@@ -365,7 +336,6 @@ type GoDict struct {
 	rwm *sync.RWMutex
 }
 
-
 // NewGoDict returns a newly created GoDict.
 func NewGoDict() (d *GoDict) {
 	d = &GoDict{map[string]int{}, []string{}, &sync.RWMutex{}}
@@ -373,12 +343,10 @@ func NewGoDict() (d *GoDict) {
 	return
 }
 
-
 // Count returns the number of items in the dict.
 func (d *GoDict) Count() int {
 	return len(d.is)
 }
-
 
 // Id maps string s to it's numeric identificator. The implementation honors getting
 // an existing id at the cost of assigning a new one.
@@ -406,7 +374,6 @@ func (d *GoDict) Id(s string) (y int) {
 	return
 }
 
-
 // S maps an id to it's string value. Id values not contained in the bijection panics on boundary checks,
 // just like e.g. container.Vector.At()
 func (d *GoDict) S(id int) string {
@@ -414,7 +381,6 @@ func (d *GoDict) S(id int) string {
 	defer d.rwm.RUnlock() // R--
 	return d.is[id]
 }
-
 
 // StrPack returns a new instance of s which is tightly packed in memory.
 // It is intended for avoiding the situation where having a live reference

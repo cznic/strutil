@@ -7,18 +7,16 @@
 
 package strutil
 
-
 import (
 	"bytes"
-	"cznic/rnd"
+	"github.com/cznic/mathutil"
 	"math"
 	"testing"
 )
 
-
 func TestBase64(t *testing.T) {
 	const max = 768
-	r, err := rnd.NewFC32(math.MinInt32, math.MaxInt32, true)
+	r, err := mathutil.NewFC32(math.MinInt32, math.MaxInt32, true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -37,10 +35,9 @@ func TestBase64(t *testing.T) {
 	}
 }
 
-
 func TestBase32Ext(t *testing.T) {
 	const max = 640
-	r, err := rnd.NewFC32(math.MinInt32, math.MaxInt32, true)
+	r, err := mathutil.NewFC32(math.MinInt32, math.MaxInt32, true)
 	if err != nil {
 		t.Fatal(err)
 	}

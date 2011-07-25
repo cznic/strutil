@@ -9,4 +9,6 @@ TARG=github.com/cznic/strutil
 GOFILES=\
 	strutil.go\
 
+CLEANFILES += *~
+
 include $(GOROOT)/src/Make.pkg
