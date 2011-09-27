@@ -310,7 +310,7 @@ func (d *Dict) Count() int {
 	return len(d.is)
 }
 
-// Id maps string s to it's numeric identificator.
+// Id maps string s to its numeric identificator.
 func (d *Dict) Id(s string) (y int) {
 	if y, ok := d.si[s]; ok {
 		return y
@@ -323,7 +323,7 @@ func (d *Dict) Id(s string) (y int) {
 	return
 }
 
-// S maps an id to it's string value. Id values not contained in the bijection panics on boundary checks,
+// S maps an id to its string value. Id values not contained in the bijection panics on boundary checks,
 // just like e.g. conatiner.Vector.At()
 func (d *Dict) S(id int) string {
 	return d.is[id]
@@ -348,7 +348,7 @@ func (d *GoDict) Count() int {
 	return len(d.is)
 }
 
-// Id maps string s to it's numeric identificator. The implementation honors getting
+// Id maps string s to its numeric identificator. The implementation honors getting
 // an existing id at the cost of assigning a new one.
 func (d *GoDict) Id(s string) (y int) {
 	d.rwm.RLock()             // R++
@@ -374,7 +374,7 @@ func (d *GoDict) Id(s string) (y int) {
 	return
 }
 
-// S maps an id to it's string value. Id values not contained in the bijection panics on boundary checks,
+// S maps an id to its string value. Id values not contained in the bijection panics on boundary checks,
 // just like e.g. container.Vector.At()
 func (d *GoDict) S(id int) string {
 	d.rwm.RLock()         // R++
