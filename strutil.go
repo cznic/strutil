@@ -323,10 +323,13 @@ func (d *Dict) Id(s string) (y int) {
 	return
 }
 
-// S maps an id to its string value. Id values not contained in the bijection panics on boundary checks,
-// just like e.g. conatiner.Vector.At()
-func (d *Dict) S(id int) string {
-	return d.is[id]
+// S maps an id to its string value and ok == true. Id values not contained in the bijection
+// return "", false.
+func (d *Dict) S(id int) (s string, ok bool) {
+	if id >= len(d.is) {
+		return "", false
+	}
+	return d.is[id], true
 }
 
 // GoDict is a concurrent access safe version of Dict.
@@ -374,12 +377,15 @@ func (d *GoDict) Id(s string) (y int) {
 	return
 }
 
-// S maps an id to its string value. Id values not contained in the bijection panics on boundary checks,
-// just like e.g. container.Vector.At()
-func (d *GoDict) S(id int) string {
+// S maps an id to its string value and ok == true. Id values not contained in the bijection
+// return "", false.
+func (d *GoDict) S(id int) (s string, ok bool) {
 	d.rwm.RLock()         // R++
 	defer d.rwm.RUnlock() // R--
-	return d.is[id]
+	if id >= len(d.is) {
+		return "", false
+	}
+	return d.is[id], true
 }
 
 // StrPack returns a new instance of s which is tightly packed in memory.
