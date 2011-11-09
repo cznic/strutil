@@ -13,12 +13,11 @@ import (
 	"encoding/base64"
 	"fmt"
 	"io"
-	"os"
 	"sync"
 )
 
 // Base32ExtDecode decodes base32 extended (RFC 4648) text to binary data.
-func Base32ExtDecode(text []byte) (data []byte, err os.Error) {
+func Base32ExtDecode(text []byte) (data []byte, err error) {
 	n := base32.HexEncoding.DecodedLen(len(text))
 	data = make([]byte, n)
 	decoder := base32.NewDecoder(base32.HexEncoding, bytes.NewBuffer(text))
@@ -43,7 +42,7 @@ func Base32ExtEncode(data []byte) (text []byte) {
 }
 
 // Base64Decode decodes base64 text to binary data.
-func Base64Decode(text []byte) (data []byte, err os.Error) {
+func Base64Decode(text []byte) (data []byte, err error) {
 	n := base64.StdEncoding.DecodedLen(len(text))
 	data = make([]byte, n)
 	decoder := base64.NewDecoder(base64.StdEncoding, bytes.NewBuffer(text))
@@ -70,7 +69,7 @@ func Base64Encode(data []byte) (text []byte) {
 // Formatter is an io.Writer extended by a fmt.Printf like function Format
 type Formatter interface {
 	io.Writer
-	Format(format string, args ...interface{}) (n int, errno os.Error)
+	Format(format string, args ...interface{}) (n int, errno error)
 }
 
 type indentFormatter struct {
@@ -111,7 +110,7 @@ func IndentFormatter(w io.Writer, indent string) Formatter {
 	return &indentFormatter{w, []byte(indent), 0, stBOL}
 }
 
-func (f *indentFormatter) format(flat bool, format string, args ...interface{}) (n int, errno os.Error) {
+func (f *indentFormatter) format(flat bool, format string, args ...interface{}) (n int, errno error) {
 	buf := []byte{}
 	for i := 0; i < len(format); i++ {
 		c := format[i]
@@ -189,7 +188,7 @@ func (f *indentFormatter) format(flat bool, format string, args ...interface{}) 
 	return f.Write([]byte(fmt.Sprintf(string(buf), args...)))
 }
 
-func (f *indentFormatter) Format(format string, args ...interface{}) (n int, errno os.Error) {
+func (f *indentFormatter) Format(format string, args ...interface{}) (n int, errno error) {
 	return f.format(false, format, args...)
 }
 
@@ -211,7 +210,7 @@ func FlatFormatter(w io.Writer) Formatter {
 	return (*flatFormatter)(IndentFormatter(w, "").(*indentFormatter))
 }
 
-func (f *flatFormatter) Format(format string, args ...interface{}) (n int, errno os.Error) {
+func (f *flatFormatter) Format(format string, args ...interface{}) (n int, errno error) {
 	return (*indentFormatter)(f).format(true, format, args...)
 }
 
