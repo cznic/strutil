@@ -5,4 +5,4 @@ Online godoc documentation for this package (should be) available at:
 http://gopkgdoc.appspot.com/pkg/github.com/cznic/strutil
 
 Installation:
-$ goinstall github.com/cznic/strutil
+$ go get github.com/cznic/strutil
