@@ -101,7 +101,7 @@ const (
 //	"abc%%e\n\tx\n\tx\nz\n"
 // The commands can be scattered between separate invocations of Format(),
 // i.e. the formatter keeps track of the indent level and knows if it is
-// positioned on start of a line and should emit indentation(s). 
+// positioned on start of a line and should emit indentation(s).
 // The same output as above can be produced by e.g.:
 //	f := IndentFormatter(os.Stdout, " ")
 //	f.Format("abc%d%%e%i\nx\n", 3)
