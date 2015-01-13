@@ -59,7 +59,8 @@ func TestFields(t *testing.T) {
 	one := func(n int) string {
 		s := ""
 		for i := 0; i < 3; i++ {
-			s += p[i%len(p)]
+			s += p[n%len(p)]
+			n /= len(p)
 		}
 		return s
 	}
