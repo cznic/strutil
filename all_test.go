@@ -74,7 +74,7 @@ func TestFields(t *testing.T) {
 				a[2] = one(x)
 				enc := JoinFields(a[:], "|")
 				dec := SplitFields(enc, "|")
-				if g, e := strings.Join(a[:], ","), strings.Join(dec, ","); g != e {
+				if g, e := strings.Join(dec, ","), strings.Join(a[:], ","); g != e {
 					t.Fatal(g, e)
 				}
 			}
