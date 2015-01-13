@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"github.com/cznic/mathutil"
 	"math"
+	"strings"
 	"testing"
 )
 
@@ -49,6 +50,33 @@ func TestBase32Ext(t *testing.T) {
 
 		if !bytes.Equal(bin, cmp) {
 			t.Fatalf("a: % x\nb: % x", bin, cmp)
+		}
+	}
+}
+
+func TestFields(t *testing.T) {
+	p := []string{"", "\\", "|", "0", "1", "2"}
+	one := func(n int) string {
+		s := ""
+		for i := 0; i < 3; i++ {
+			s += p[i%len(p)]
+		}
+		return s
+	}
+	max := len(p) * len(p) * len(p)
+	var a [3]string
+	for x := 0; x < max; x++ {
+		a[0] = one(x)
+		for x := 0; x < max; x++ {
+			a[1] = one(x)
+			for x := 0; x < len(p)*len(p); x++ {
+				a[2] = one(x)
+				enc := JoinFields(a[:], "|")
+				dec := SplitFields(enc, "|")
+				if g, e := strings.Join(a[:], ","), strings.Join(dec, ","); g != e {
+					t.Fatal(g, e)
+				}
+			}
 		}
 	}
 }

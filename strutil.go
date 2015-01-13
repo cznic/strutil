@@ -11,6 +11,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"io"
+	"strings"
 	"sync"
 )
 
@@ -391,4 +392,37 @@ func (d *GoDict) S(id int) (s string, ok bool) {
 // in memory anyway - it can't be GCed.
 func StrPack(s string) string {
 	return string([]byte(s))
+}
+
+// JoinFields returns strings in flds joined by sep. Flds may contain arbitrary
+// bytes, including the sep as they are safely escaped. JoinFields panics if
+// sep is the backslash character or if len(sep) != 1.
+func JoinFields(flds []string, sep string) string {
+	if len(sep) != 1 || sep == "\\" {
+		panic("invalid separator")
+	}
+
+	a := make([]string, len(flds))
+	for i, v := range flds {
+		v = strings.Replace(v, "\\", "\\0", -1)
+		a[i] = strings.Replace(v, sep, "\\1", -1)
+	}
+	return strings.Join(a, sep)
+}
+
+// SplitFields splits s, which must be produced by JoinFields using the same
+// sep, into flds.  SplitFields panics if sep is the backslash character or if
+// len(sep) != 1.
+func SplitFields(s, sep string) (flds []string) {
+	if len(sep) != 1 || sep == "\\" {
+		panic("invalid separator")
+	}
+
+	a := strings.Split(s, sep)
+	r := make([]string, len(a))
+	for i, v := range a {
+		v = strings.Replace(v, "\\1", sep, -1)
+		r[i] = strings.Replace(v, "\\0", "\\", -1)
+	}
+	return r
 }
