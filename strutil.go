@@ -11,6 +11,9 @@ import (
 	"encoding/base64"
 	"fmt"
 	"io"
+	"reflect"
+	"sort"
+	"strconv"
 	"strings"
 	"sync"
 )
@@ -82,7 +85,7 @@ const (
 	st0 = iota
 	stBOL
 	stPERC
-	stBOL_PERC
+	stBOLPERC
 )
 
 // IndentFormatter returns a new Formatter which interprets %i and %u in the
@@ -137,7 +140,7 @@ func (f *indentFormatter) format(flat bool, format string, args ...interface{}) 
 				}
 				buf = append(buf, cc)
 			case '%':
-				f.state = stBOL_PERC
+				f.state = stBOLPERC
 			default:
 				if !flat {
 					for i := 0; i < f.indentLevel; i++ {
@@ -147,7 +150,7 @@ func (f *indentFormatter) format(flat bool, format string, args ...interface{}) 
 				buf = append(buf, c)
 				f.state = st0
 			}
-		case stBOL_PERC:
+		case stBOLPERC:
 			switch c {
 			case 'i':
 				f.indentLevel++
@@ -181,7 +184,7 @@ func (f *indentFormatter) format(flat bool, format string, args ...interface{}) 
 		}
 	}
 	switch f.state {
-	case stPERC, stBOL_PERC:
+	case stPERC, stBOLPERC:
 		buf = append(buf, '%')
 	}
 	return f.Write([]byte(fmt.Sprintf(string(buf), args...)))
@@ -425,4 +428,218 @@ func SplitFields(s, sep string) (flds []string) {
 		r[i] = strings.Replace(v, "\\0", "\\", -1)
 	}
 	return r
+}
+
+// PrettyPrintHooks allow to customize the result of PrettyPrint for types
+// listed in the map value.
+type PrettyPrintHooks map[reflect.Type]func(f Formatter, v interface{}, prefix, suffix string)
+
+// PrettyString returns the output of PrettyPrint as a string.
+func PrettyString(v interface{}, prefix, suffix string, hooks PrettyPrintHooks) string {
+	var b bytes.Buffer
+	PrettyPrint(&b, v, prefix, suffix, hooks)
+	return b.String()
+}
+
+// PrettyPrint pretty prints v to w. Zero values and unexported struct fields
+// are omitted.
+func PrettyPrint(w io.Writer, v interface{}, prefix, suffix string, hooks PrettyPrintHooks) {
+	if v == nil {
+		return
+	}
+
+	f := IndentFormatter(w, "· ")
+
+	defer func() {
+		if e := recover(); e != nil {
+			f.Format("\npanic: %v", e)
+		}
+	}()
+
+	prettyPrint(nil, f, prefix, suffix, v, hooks)
+}
+
+func prettyPrint(protect map[interface{}]struct{}, sf Formatter, prefix, suffix string, v interface{}, hooks PrettyPrintHooks) {
+	if v == nil {
+		return
+	}
+
+	rt := reflect.TypeOf(v)
+	if handler := hooks[rt]; handler != nil {
+		handler(sf, v, prefix, suffix)
+		return
+	}
+
+	rv := reflect.ValueOf(v)
+	switch rt.Kind() {
+	case reflect.Slice:
+		if rv.Len() == 0 {
+			return
+		}
+
+		sf.Format("%s[]%T{ // len %d%i\n", prefix, rv.Index(0).Interface(), rv.Len())
+		for i := 0; i < rv.Len(); i++ {
+			prettyPrint(protect, sf, fmt.Sprintf("%d: ", i), ",\n", rv.Index(i).Interface(), hooks)
+		}
+		suffix = strings.Replace(suffix, "%", "%%", -1)
+		sf.Format("%u}" + suffix)
+	case reflect.Array:
+		if reflect.Zero(rt).Interface() == rv.Interface() {
+			return
+		}
+
+		sf.Format("%s[%d]%T{%i\n", prefix, rv.Len(), rv.Index(0).Interface())
+		for i := 0; i < rv.Len(); i++ {
+			prettyPrint(protect, sf, fmt.Sprintf("%d: ", i), ",\n", rv.Index(i).Interface(), hooks)
+		}
+		suffix = strings.Replace(suffix, "%", "%%", -1)
+		sf.Format("%u}" + suffix)
+	case reflect.Struct:
+		if rt.NumField() == 0 {
+			return
+		}
+
+		if reflect.DeepEqual(reflect.Zero(rt).Interface(), rv.Interface()) {
+			return
+		}
+
+		sf.Format("%s%T{%i\n", prefix, v)
+		for i := 0; i < rt.NumField(); i++ {
+			f := rv.Field(i)
+			if !f.CanInterface() {
+				continue
+			}
+
+			prettyPrint(protect, sf, fmt.Sprintf("%s: ", rt.Field(i).Name), ",\n", f.Interface(), hooks)
+		}
+		suffix = strings.Replace(suffix, "%", "%%", -1)
+		sf.Format("%u}" + suffix)
+	case reflect.Ptr:
+		if rv.IsNil() {
+			return
+		}
+
+		rvi := rv.Interface()
+		if _, ok := protect[rvi]; ok {
+			suffix = strings.Replace(suffix, "%", "%%", -1)
+			sf.Format("%s&%T{ /* recursive/repetitive pointee not shown */ }"+suffix, prefix, rv.Elem().Interface())
+			return
+		}
+
+		if protect == nil {
+			protect = map[interface{}]struct{}{}
+		}
+		protect[rvi] = struct{}{}
+		prettyPrint(protect, sf, prefix+"&", suffix, rv.Elem().Interface(), hooks)
+	case reflect.Int, reflect.Int16, reflect.Int32, reflect.Int64, reflect.Int8:
+		if v := rv.Int(); v != 0 {
+			suffix = strings.Replace(suffix, "%", "%%", -1)
+			sf.Format("%s%v"+suffix, prefix, v)
+		}
+	case reflect.Uint, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uint8:
+		if v := rv.Uint(); v != 0 {
+			suffix = strings.Replace(suffix, "%", "%%", -1)
+			sf.Format("%s%v"+suffix, prefix, v)
+		}
+	case reflect.Float32, reflect.Float64:
+		if v := rv.Float(); v != 0 {
+			suffix = strings.Replace(suffix, "%", "%%", -1)
+			sf.Format("%s%v"+suffix, prefix, v)
+		}
+	case reflect.Complex64, reflect.Complex128:
+		if v := rv.Complex(); v != 0 {
+			suffix = strings.Replace(suffix, "%", "%%", -1)
+			sf.Format("%s%v"+suffix, prefix, v)
+		}
+	case reflect.Uintptr:
+		if v := rv.Uint(); v != 0 {
+			suffix = strings.Replace(suffix, "%", "%%", -1)
+			sf.Format("%s%v"+suffix, prefix, v)
+		}
+	case reflect.UnsafePointer:
+		s := fmt.Sprintf("%p", rv.Interface())
+		if s == "0x0" {
+			return
+		}
+
+		suffix = strings.Replace(suffix, "%", "%%", -1)
+		sf.Format("%s%s"+suffix, prefix, s)
+	case reflect.Bool:
+		if v := rv.Bool(); v {
+			suffix = strings.Replace(suffix, "%", "%%", -1)
+			sf.Format("%s%v"+suffix, prefix, rv.Bool())
+		}
+	case reflect.String:
+		s := rv.Interface().(string)
+		if s == "" {
+			return
+		}
+
+		suffix = strings.Replace(suffix, "%", "%%", -1)
+		sf.Format("%s%q"+suffix, prefix, s)
+	case reflect.Chan:
+		if reflect.Zero(rt).Interface() == rv.Interface() {
+			return
+		}
+
+		c := rv.Cap()
+		s := ""
+		if c != 0 {
+			s = fmt.Sprintf("// capacity: %d", c)
+		}
+		suffix = strings.Replace(suffix, "%", "%%", -1)
+		sf.Format("%s%s %s%s"+suffix, prefix, rt.ChanDir(), rt.Elem().Name(), s)
+	case reflect.Func:
+		if rv.IsNil() {
+			return
+		}
+
+		var in, out []string
+		for i := 0; i < rt.NumIn(); i++ {
+			x := reflect.Zero(rt.In(i))
+			in = append(in, fmt.Sprintf("%T", x.Interface()))
+		}
+		if rt.IsVariadic() {
+			i := len(in) - 1
+			in[i] = "..." + in[i][2:]
+		}
+		for i := 0; i < rt.NumOut(); i++ {
+			out = append(out, rt.Out(i).Name())
+		}
+		s := "(" + strings.Join(in, ", ") + ")"
+		t := strings.Join(out, ", ")
+		if len(out) > 1 {
+			t = "(" + t + ")"
+		}
+		if t != "" {
+			t = " " + t
+		}
+		suffix = strings.Replace(suffix, "%", "%%", -1)
+		sf.Format("%sfunc%s%s { ... }"+suffix, prefix, s, t)
+	case reflect.Map:
+		keys := rv.MapKeys()
+		if len(keys) == 0 {
+			return
+		}
+
+		var buf bytes.Buffer
+		nf := IndentFormatter(&buf, "· ")
+		var skeys []string
+		for i, k := range keys {
+			prettyPrint(protect, nf, "", "", k.Interface(), hooks)
+			skeys = append(skeys, fmt.Sprintf("%s%10d", buf.Bytes(), i))
+			buf.Reset()
+		}
+		sort.Strings(skeys)
+		sf.Format("%s%T{%i\n", prefix, v)
+		for _, k := range skeys {
+			si := strings.TrimSpace(k[len(k)-10:])
+			k = k[:len(k)-10]
+			n, _ := strconv.ParseUint(si, 10, 64)
+			mv := rv.MapIndex(keys[n])
+			prettyPrint(protect, sf, fmt.Sprintf("%s: ", k), ",\n", mv.Interface(), hooks)
+		}
+		suffix = strings.Replace(suffix, "%", "%%", -1)
+		sf.Format("%u}" + suffix)
+	}
 }
