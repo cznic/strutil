@@ -37,12 +37,17 @@ func dbg(s string, va ...interface{}) {
 	fmt.Fprintln(os.Stderr)
 }
 
-func TODO(...interface{}) string {
+func TODO(...interface{}) string { //TODOOK
 	_, fn, fl, _ := runtime.Caller(1)
-	return fmt.Sprintf("TODO: %s:%d:\n", path.Base(fn), fl)
+	return fmt.Sprintf("TODO: %s:%d:\n", path.Base(fn), fl) //TODOOK
 }
 
 func use(...interface{}) {}
+
+func init() {
+	use(caller, dbg, TODO) //TODOOK
+}
+
 func TestBase64(t *testing.T) {
 	const max = 768
 	r, err := mathutil.NewFC32(math.MinInt32, math.MaxInt32, true)
@@ -224,4 +229,26 @@ func ExamplePrettyString() {
 	// · Uintptr: 99,
 	// · UnsafePointer: 0x12345678,
 	// }
+}
+
+func TestGopath(t *testing.T) {
+	gp := Gopath()
+	if gp == "" {
+		t.Fatal("empty GOPATH")
+	}
+
+	t.Log(gp)
+}
+
+func TestImportPath(t *testing.T) {
+	ip, err := ImportPath()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if ip == "" {
+		t.Fatal("empty import path")
+	}
+
+	t.Log(ip)
 }
